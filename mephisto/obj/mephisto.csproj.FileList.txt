@@ -1,0 +1,9 @@
+F:\Program Files\Microsoft\ProjectHoshimiSDKRound2\players\mephisto.dll
+F:\Program Files\Microsoft\ProjectHoshimiSDKRound2\players\mephisto.pdb
+obj\Debug\ResolveAssemblyReference.cache
+obj\Debug\mephisto.MyResource.resources
+obj\Debug\mephisto.csproj.GenerateResource.Cache
+obj\Debug\mephisto.dll
+obj\Debug\mephisto.pdb
+E:\Program Files\Microsoft\ProjectHoshimiSDKRound2\players\mephisto.dll
+E:\Program Files\Microsoft\ProjectHoshimiSDKRound2\players\mephisto.pdb

@@ -1,0 +1,100 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.50727</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{27DF1877-A129-4D3C-8307-BB484D2BA013}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>mephisto</RootNamespace>
+    <AssemblyName>mephisto</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>E:\Program Files\Microsoft\ProjectHoshimiSDKRound2\players\</OutputPath>
+    <DefineConstants>
+    </DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>F:\Program Files\Microsoft\ProjectHoshimiSDKRound2\players\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="VG.Common, Version=2.0.0.0, Culture=neutral, PublicKeyToken=a3dcfffaeb5f5860, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>E:\Program Files\Microsoft\ProjectHoshimiSDKRound2\VG.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="VG.Map, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0144c0007251794f, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>E:\Program Files\Microsoft\ProjectHoshimiSDKRound2\VG.Map.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Global.cs" />
+    <Compile Include="Group.cs" />
+    <Compile Include="HPNode.cs" />
+    <Compile Include="HPNodeMinHeap.cs" />
+    <Compile Include="MyAI.cs" />
+    <Compile Include="MyResource.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MyResource.resx</DependentUpon>
+    </Compile>
+    <Compile Include="NanoBots\BlockerBot.cs" />
+    <Compile Include="NanoBots\DummyCrapBot.cs" />
+    <Compile Include="NanoBots\DummyNeedle.cs" />
+    <Compile Include="NanoBots\GuardBot.cs" />
+    <Compile Include="Navigation\NavigationStruct.cs" />
+    <Compile Include="Navigation\NavNode.cs" />
+    <Compile Include="Navigation\NavNodeComparer.cs" />
+    <Compile Include="Navigation\NavPointComparer.cs" />
+    <Compile Include="Navigation\UniqueNavigationStruct.cs" />
+    <Compile Include="NeedleInfo.cs" />
+    <Compile Include="Pathfind\AStar.cs" />
+    <Compile Include="Pathfind\AStarNode.cs" />
+    <Compile Include="Pathfind\AStarSpecial.cs" />
+    <Compile Include="Pathfind\MinHeap.cs" />
+    <Compile Include="NanoBots\ContainerBot.cs" />
+    <Compile Include="NanoBots\DefenderBot.cs" />
+    <Compile Include="NanoBots\HunterBot.cs" />
+    <Compile Include="NanoBots\NavigationCollectorBot.cs" />
+    <Compile Include="NanoBots\NavigationExplorerBot.cs" />
+    <Compile Include="NanoBots\NeedleBot.cs" />
+    <Compile Include="NanoBots\ScannerBot.cs" />
+    <Compile Include="NanoBots\UniqueNavigationCollectorBot.cs" />
+    <Compile Include="NanoBots\UniqueNavigationExplorerBot.cs" />
+    <Compile Include="Pathfind\Path.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="MyResource.resx">
+      <SubType>Designer</SubType>
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>MyResource.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\merahputih.JPG" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

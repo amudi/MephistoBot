@@ -1,0 +1,526 @@
+using System;
+using System.Collections.Generic;
+using System.Collections;
+using System.Drawing;
+using VG.Common;
+using VG.Map;
+using VG.Mission;
+using mephisto.NanoBots;
+using mephisto.Navigation;
+using mephisto.Pathfind;
+
+namespace mephisto
+{
+    public class MyAI : Player
+    {
+        #region member
+
+        public static Group[] arrGroup = new Group[0];
+        public static List<NavigationStruct> listNavExpObj = new List<NavigationStruct>();
+        public static List<NavigationStruct> listNavColObj = new List<NavigationStruct>();
+        public static List<UniqueNavigationStruct> listUNavExpObj = new List<UniqueNavigationStruct>();
+        public static List<UniqueNavigationStruct> listUNavColObj = new List<UniqueNavigationStruct>();
+        private static int nextGroup = 0;
+        private static List<Point> hoshimiPoint = new List<Point>();
+        private bool first = true;
+
+        private Point startPoint = new Point(40, 70);
+
+        private int prevNumBots = 0;
+
+        //current bots count
+        private int numHunters;
+        private int numScanners;
+        private int numContainers;
+        private int numDefender;
+        private int numNeedle;
+        private int numNavExpBot;
+        private int numNavColBot;
+        private int numUNavExpBot;
+        private int numUNavColBot;
+
+        #endregion
+
+        #region constructor
+
+        public MyAI(string name, int id) : base(name, id)
+        {
+            new Global();
+            //inisiasi static vars
+            nextGroup = 0;
+            listNavExpObj = new List<NavigationStruct>();
+            listNavColObj = new List<NavigationStruct>();
+            hoshimiPoint = new List<Point>();
+
+            //static di kelas lain
+            NavigationCollectorBot.aznPoint = new List<Point>();
+            NavigationCollectorBot.allNodes = new List<NavNode>();
+            NavigationCollectorBot.first = true;
+            NavigationExplorerBot.allNodes = new List<NavNode>();
+            NavigationExplorerBot.first = true;
+            UniqueNavigationCollectorBot.aznPoint = new List<Point>();
+            ContainerBot.aznPoint = new List<Point>();            
+
+            this.ChooseInjectionPointEvent += new ChooseInjectionPointEventHandler(MyAI_ChooseInjectionPointEvent);
+            this.WhatToDoNextEvent += new WhatToDoNextEventHandler(MyAI_WhatToDoNextEvent);
+        }
+
+        #endregion
+
+        #region choose injection point event
+
+        /*private Point GetInjectionPoint()
+        {
+            Point ip = new Point(0, 0);
+            Point[] offset = new Point[4] { new Point(0,-1),
+                                            new Point(0, 1),
+                                            new Point(-1,0),
+                                            new Point(1, 0)
+                                          };
+            bool found = false;
+            Point ptCur = startPoint;
+            bool[][] ipSet = new bool[200][];
+            for (int i = 0; i < 200; i++)
+                ipSet[i] = new bool[200];
+
+            PointQueue q = new PointQueue(200 * 200);
+            while (!found)
+            {
+                for (int i = 0; i < offset.Length; i++)
+                {
+                    ip.X = ptCur.X + offset[i].X;
+                    ip.Y = ptCur.Y + offset[i].Y;
+
+                    if ((!Tissue.IsInMap(ip.X, ip.Y)) || (ip.Equals(startPoint)))
+                        continue;
+
+                    if (!ipSet[ip.X][ip.Y])
+                    {
+                        ipSet[ip.X][ip.Y] = true;
+                        if (this.Tissue[ip.X, ip.Y].AreaType == AreaEnum.LowDensity)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    q.Enqueue(ip);
+                }
+                if (found)
+                    break;
+                ptCur = q.Dequeue();
+            }
+            Point closestAZN = Global.FindClosest(EntityEnum.AZN, ip, NanoBotType.NanoContainer);
+            return closestAZN;
+        }*/
+
+        public void MyAI_ChooseInjectionPointEvent()
+        {
+            Global.PierreIP = this.PierreTeamInjectionPoint;
+            Global.PF = new AStar(this.Tissue);
+            Global.SPF = new AStarSpecial(this.Tissue);
+            //set jumlah ContainerBot to build
+            /*
+            if (this.Tissue.get_EntitiesByType(EntityEnum.HoshimiPoint).Count >= 15)
+                Global.NBCONTAINERTOBUILD = 8;
+            else
+                Global.NBCONTAINERTOBUILD = 6;
+            */
+            arrGroup = new Group[Global.NBCONTAINERTOBUILD / 2];
+            for (int i = 0; i < arrGroup.Length; i++)
+            {
+                arrGroup[i] = new Group();
+            }
+            this.AI.InternalName = "AI";
+            //this.InjectionPointWanted = GetInjectionPoint();
+            EntityCollection eCollection = this.Tissue.get_EntitiesByType(EntityEnum.AZN);
+            this.InjectionPointWanted = new Point(eCollection[0].X, eCollection[0].Y);
+            //this.InjectionPointWanted = new Point(100,85);
+
+        }
+
+        #endregion
+
+        #region what to do next event
+
+        public void MyAI_WhatToDoNextEvent()
+        {
+            //cek apakah pierre AI dead
+            foreach (NanoBotInfo bot in OtherNanoBotsInfo)
+            {
+                if ((bot.PlayerID == 0) && (bot.NanoBotType == NanoBotType.NanoAI) && (bot.HitPoint <= 0))
+                {
+                    Global.isPierreAIDead = true;
+                    break;
+                }
+            }
+
+            numHunters = 0;
+            numScanners = 0;
+            numContainers = 0;
+            numDefender = 0;
+            numNeedle = 0;
+            numNavExpBot = 0;
+            numNavColBot = 0;
+            numUNavExpBot = 0;
+            numUNavColBot = 0;
+            /*
+            #region handle objectives
+
+            if (first1)
+            {
+                int jmlCol = 0;
+                int jmlExp = 0;
+                foreach (BaseObjective bo in Mission.Objectives)
+                {
+                    if (bo.Status == ObjectiveStatus.ToBeDone)
+                    {
+                        if (bo is UniqueNavigationObjective)
+                        {
+                            UniqueNavigationObjective unav = (UniqueNavigationObjective)bo;
+                            if (unav.NanoBotType != NanoBotType.NanoCollector)
+                            {
+                                Global.NBUNAVEXPTOBUILD++;
+                                listUNavExpObj.Add(new UniqueNavigationStruct(unav));
+                            }
+                            else if (unav.NanoBotType == NanoBotType.NanoCollector)
+                            {
+                                Global.NBUNAVCOLTOBUILD++;
+                                listUNavColObj.Add(new UniqueNavigationStruct(unav));
+                            }
+                        }
+                        else if (bo is NavigationObjective)
+                        {
+                            NavigationObjective n = (NavigationObjective)bo;
+                            if (n.NanoBotType != NanoBotType.NanoCollector)
+                            {
+                                jmlExp += n.NavPoints.Count;
+                                listNavExpObj.Add(new NavigationStruct(n));
+                            }
+                            else
+                            {
+                                jmlCol += n.NavPoints.Count;
+                                listNavColObj.Add(new NavigationStruct(n));
+                            }
+                        }
+                    }
+                }
+                if (jmlExp > 0)
+                {
+                    Global.NBNAVEXPTOBUILD = (jmlExp / 3);
+                    if ((jmlExp % 3) > 0)
+                        Global.NBNAVEXPTOBUILD++;
+                }
+                if (jmlCol > 0)
+                {
+                    Global.NBNAVCOLTOBUILD = (jmlCol / 2);
+                    if ((jmlCol % 2) > 0)
+                        Global.NBNAVCOLTOBUILD++;
+                }
+                first1 = false;
+            }
+
+            #endregion
+            */
+            #region construct bots
+
+            foreach (NanoBot bot in this.NanoBots)
+            {
+                if (bot is HunterBot)
+                {
+                    numHunters++;
+                    ((HunterBot)bot).DoNext(this);
+                }
+                else if (bot is DefenderBot)
+                {
+                    numDefender++;
+                    ((DefenderBot)bot).DoNext(this);
+                }
+                else if (bot is ScannerBot)
+                {
+                    numScanners++;
+                    ((ScannerBot)bot).DoNext(this);
+                }
+                else if (bot is ContainerBot)
+                {
+                    numContainers++;
+                    ((ContainerBot)bot).DoNext(this);
+                }
+                else if (bot is NeedleBot)
+                {
+                    numNeedle++;
+                    ((NeedleBot)bot).DoNext(this);
+                }
+                else if (bot is NavigationExplorerBot)
+                {
+                    numNavExpBot++;
+                    ((NavigationExplorerBot)bot).DoNext(this);
+                }
+                else if (bot is NavigationCollectorBot)
+                {
+                    numNavColBot++;
+                    ((NavigationCollectorBot)bot).DoNext(this);
+                }
+                else if (bot is UniqueNavigationExplorerBot)
+                {
+                    numUNavExpBot++;
+                    ((UniqueNavigationExplorerBot)bot).DoNext(this);
+                }
+                else if (bot is UniqueNavigationCollectorBot)
+                {
+                    numUNavColBot++;
+                    ((UniqueNavigationCollectorBot)bot).DoNext(this);
+                }
+            }
+
+            //kalo ada bot yg mati
+            if (this.prevNumBots > this.NanoBots.Count)
+            {
+                //cek kalo yg mati adalah NavBots
+                //set semua objective isAssigned = false;
+                if (numUNavExpBot < Global.NBNAVEXPTOBUILD)
+                {
+                    foreach (UniqueNavigationStruct u in listUNavExpObj)
+                    {
+                        u.isAssigned = false;
+                    }
+                }
+                if (numUNavColBot < Global.NBNAVCOLTOBUILD)
+                {
+                    foreach (UniqueNavigationStruct u in listUNavColObj)
+                    {
+                        u.isAssigned = false;
+                    }
+                }
+                if (numNavExpBot < Global.NBNAVEXPTOBUILD)
+                {
+                    foreach (NavNode p in NavigationExplorerBot.allNodes)
+                    {
+                        p.Assigned = false;
+                    }
+                }
+                if (numNavColBot < Global.NBNAVCOLTOBUILD)
+                {
+                    foreach (NavNode p in NavigationCollectorBot.allNodes)
+                    {
+                        p.Assigned = false;
+                    }
+                }
+            }
+
+            Point prevDest = this.AI.PointInfo;
+            bool stop = false;
+            if (numHunters < Global.NBHUNTERBOTTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(HunterBot), "Hunter");
+                return;
+            }
+            if (numDefender < Global.NBDEFENDERTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(DefenderBot), "Defender");
+                return;
+            }
+            if (numScanners < Global.NBSCANNERTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(ScannerBot), "Scanner");
+                return;
+            }
+            if (numContainers < Global.NBCONTAINERTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(ContainerBot), "Containr");
+                return;
+            }
+            if (numNavExpBot < Global.NBNAVEXPTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(NavigationExplorerBot), "NavExplr");
+                return;
+            }
+            if (numNavColBot < Global.NBNAVCOLTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(NavigationCollectorBot), "NavColtr");
+                return;
+            }
+            if (numUNavExpBot < Global.NBUNAVEXPTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(UniqueNavigationExplorerBot), "UNavExplr");
+                return;
+            }
+            if (numUNavColBot < Global.NBUNAVCOLTOBUILD)
+            {
+                AI.StopMoving();
+                stop = true;
+                AI.Build(typeof(UniqueNavigationCollectorBot), "UNavColtr");
+                return;
+            }
+            prevNumBots = this.NanoBots.Count;
+            if (stop)
+                this.AI.MoveTo(prevDest);
+
+            #endregion
+
+            #region AI logic
+
+            if (this.AI.State == NanoBotState.WaitingOrders)
+            {
+                //cari semua hoshimi point
+                if (first)
+                {
+                    first = false;
+                    foreach (VG.Map.Entity e in this.Tissue.get_EntitiesByType(VG.Map.EntityEnum.HoshimiPoint))
+                    {
+                        hoshimiPoint.Add(new Point(e.X, e.Y));
+                    }
+                }
+
+                //pilih hoshimi point terdekat yang belum dibuat needlenya
+                Point here = this.AI.Location;
+                Point dest = this.InjectionPointWanted;
+                List<Point> injectionPoint = new List<Point>();
+                foreach (Point p in hoshimiPoint)
+                {
+                    //cek apakah sudah ada needle
+                    bool adayangsama = false;
+                    foreach (NanoBot bot in NanoBots)
+                    {
+                        if ((bot is NeedleBot) && (bot.Location.Equals(p)))
+                        {
+                            adayangsama = true;
+                            break;
+                        }
+                    }
+                    if (!adayangsama)
+                    {
+                        foreach (NanoBotInfo bot in OtherNanoBotsInfo)
+                        {
+                            if ((bot.NanoBotType == NanoBotType.NanoNeedle) && (bot.PlayerID != AI.PlayerID) && (bot.Location.Equals(p)))
+                            {
+                                adayangsama = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!adayangsama)
+                    {
+                        injectionPoint.Add(p);
+                    }
+                }
+
+                //cari hoshimi point terdekat
+                int min = int.MaxValue;
+                foreach (Point p in injectionPoint)
+                {
+                    //double jarak = squareDist(here, p);
+                    int jarak = Global.PF.FindWay(here, p).Cost;
+                    if (jarak < min)
+                    {
+                        min = jarak;
+                        dest = p;
+                    }
+                }
+                
+                if (here != dest)
+                {
+                    //this.AI.MoveTo(dest);
+                    Path res = Global.PF.FindWay(here, dest);
+                    this.AI.MoveTo(res.Points);
+                    return;
+                }
+                else
+                {
+                    this.AI.Build(typeof(NeedleBot));
+                    if (nextGroup < arrGroup.Length)
+                    {
+                        arrGroup[nextGroup].NeedleLocation = here;
+                        arrGroup[nextGroup].IsSet = true;
+                        arrGroup[nextGroup].Done = false;
+                        nextGroup++;
+                    }
+                    else
+                    {
+                        bool set = false;
+                        //kalo semua udah di set, cari yang terdekat
+                        int jmin = 999999999;
+                        Group sel = null;
+                        foreach (NanoBot bot in NanoBots)
+                        {
+                            if (bot is ContainerBot)
+                            {
+                                ContainerBot b = (ContainerBot)bot;
+                                if ((b.group.Done) && (b.Stock != 0) && (!b.group.IsSet))
+                                {
+                                    int jarak = MyAI.squareDist(here, b.Location);
+                                    if (jarak < jmin)
+                                    {
+                                        jmin = jarak;
+                                        sel = b.group;
+                                    }
+                                }
+                            }
+                        }
+                        if (sel != null)
+                        {
+                            sel.NeedleLocation = here;
+                            sel.IsSet = true;
+                            sel.Done = false;
+                            set = true;
+                        }
+
+                        if (!set)
+                        {
+                            foreach (Group g in arrGroup)
+                            {
+                                if (g.Done)
+                                {
+                                    g.NeedleLocation = here;
+                                    g.IsSet = true;
+                                    g.Done = false;
+                                    set = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+            }
+
+            #endregion
+        }
+
+        #endregion
+
+        #region Flag
+
+        public override Bitmap Flag
+        {
+            get
+            {
+                return MyResource.hmif;
+            }
+        }
+
+        #endregion
+
+        #region static methods
+
+        private static int squareDist(Point a, Point b)
+        {
+            return (((a.X - b.X) * (a.X - b.X)) + ((a.Y - b.Y) * (a.Y - b.Y)));
+        }
+
+        #endregion
+    }
+}
